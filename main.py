@@ -30,15 +30,20 @@ class Graph(Figure):
         plt.style.use(['seaborn-notebook'])
         
         self.Coins = []
-        self.curdate = datetime.datetime.strptime(ConfigLoader('config.ini').get_setting('Init', 'StartDate'), "%Y-%m-%d")
         
-    def Current_Date_String(self):
-        return self.curdate.strftime("%Y-%m-%d")
-        
-    def Nextday(self):
+    def NextStep(self):
         for coin in self.Coins:
             coin.Price_Change(self.curdate)
     
+class DateSystem():
+    def __init__(self):
+        self.date = datetime.datetime.strptime(ConfigLoader('config.ini').get_setting('Init', 'StartDate'), "%Y-%m-%d")
+        
+    def Current_Date_String(self):
+        return self.date.strftime("%Y-%m-%d")
+    
+    def Change_Next_Date(self):
+        self.date += datetime.timedelta(days=1)
         
 class MainWindow(QMainWindow):
     def __init__(self):
