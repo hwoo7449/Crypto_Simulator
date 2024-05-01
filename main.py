@@ -2,7 +2,6 @@ import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QHBoxLayout
 from PyQt5.QtCore import QTimer
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
 from matplotlib.pyplot import rcParams
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,40 +14,50 @@ class Coin():
         self.name = name
         self.prices = [ [], [] ]
         self.index = index
+        self.Set_Start_Price()
         
-    def SetStartPrice(self):
-        StartCoinPrice = ConfigLoader('config.ini').get_setting('Init', 'StartCoinPrice').split('|')
+    def Set_Start_Price(self):
+        StartCoinPrice = [int(price) for price in ConfigLoader('config.ini').get_setting('Init', 'StartCoinPrice').split('|')]
         self.prices[0].append(ConfigLoader('config.ini').get_setting('Init', 'StartDate'))
-        self.prices[1].append(random.randint(int(StartCoinPrice[0]), int(StartCoinPrice[1])))
+        self.prices[1].append(random.randint(StartCoinPrice[0], StartCoinPrice[1]))
     
     def Price_Change(self, date):
-        pass
+        self.prices[0].append(date)
+        CoinPriceCoverage = [int(price) for price in ConfigLoader('config.ini').get_setting('Init', 'CoinPriceCoverage').split('|')]
+        self.prices[1].append(self.prices[1][-1] + random.randint(CoinPriceCoverage[0], CoinPriceCoverage[1]))
         
-class Graph(Figure):
+class GraphSystem():
     def __init__(self):
         super().__init__()
-        plt.style.use(['seaborn-notebook'])
+        plt.style.use(['seaborn-v0_8-notebook'])
         
+        self.DS = DateSystem()
+        self.figure = plt.figure()
         self.Coins = []
+        self.axes = []
         
     def NextStep(self):
         for coin in self.Coins:
-            coin.Price_Change(self.curdate)
-    
+            coin.Price_Change(self.DS.Get_Cur_Date_Str())
+
 class DateSystem():
     def __init__(self):
         self.date = datetime.datetime.strptime(ConfigLoader('config.ini').get_setting('Init', 'StartDate'), "%Y-%m-%d")
         
-    def Current_Date_String(self):
+    def Get_Cur_Date_Str(self):
         return self.date.strftime("%Y-%m-%d")
     
-    def Change_Next_Date(self):
+    def Go_Next_Date(self):
         self.date += datetime.timedelta(days=1)
         
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.GS = GraphSystem()
         self.initUI()      # UI 초기화 함수 호출
+        
+    def Notify_Next_Step(self):
+        pass
 
     def initUI(self):
         self.setWindowTitle('Crypto Simulator')  # 창 제목 설정
@@ -59,7 +68,7 @@ class MainWindow(QMainWindow):
         layout = QHBoxLayout(self.main_widget)
 
         # Matplotlib figure 생성
-        self.canvas = FigureCanvas(self.figure)
+        self.canvas = FigureCanvas(self.GS.figure)
         layout.addWidget(self.canvas)
         
         # # 데이터 입력 위젯 레이아웃 생성
@@ -83,10 +92,10 @@ class MainWindow(QMainWindow):
         
         # 타이머 설정 및 시그널 연결
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.add_random_data)
+        self.timer.timeout.connect(self.Notify_Next_Step)
         self.timer.start(100)
 
-        self.plot()  # 그래프를 그리는 메소드
+        #self.plot()  # 그래프를 그리는 메소드
 
         # def add_data(self):
         #     # 사용자 입력 가져오기
