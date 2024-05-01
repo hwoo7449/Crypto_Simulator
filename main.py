@@ -7,14 +7,42 @@ from matplotlib.pyplot import rcParams
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import datetime
+from Methods import ConfigLoader
 
+class Coin():
+    def __init__(self, name, index):
+        self.name = name
+        self.prices = [ [], [] ]
+        self.index = index
+        
+    def SetStartPrice(self):
+        StartCoinPrice = ConfigLoader('config.ini').get_setting('Init', 'StartCoinPrice').split('|')
+        self.prices[0].append(ConfigLoader('config.ini').get_setting('Init', 'StartDate'))
+        self.prices[1].append(random.randint(int(StartCoinPrice[0]), int(StartCoinPrice[1])))
+    
+    def Price_Change(self, date):
+        pass
+        
+class Graph(Figure):
+    def __init__(self):
+        super().__init__()
+        plt.style.use(['seaborn-notebook'])
+        
+        self.Coins = []
+        self.curdate = datetime.datetime.strptime(ConfigLoader('config.ini').get_setting('Init', 'StartDate'), "%Y-%m-%d")
+        
+    def Current_Date_String(self):
+        return self.curdate.strftime("%Y-%m-%d")
+        
+    def Nextday(self):
+        for coin in self.Coins:
+            coin.Price_Change(self.curdate)
+    
+        
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.cur_xpos = 0  # 현재 x 위치
-        self.cur_ypos = 0  # 현재 y 위치
-        
-        self.points = []   # 데이터 포인트를 저장할 리스트
         self.initUI()      # UI 초기화 함수 호출
 
     def initUI(self):
@@ -26,7 +54,6 @@ class MainWindow(QMainWindow):
         layout = QHBoxLayout(self.main_widget)
 
         # Matplotlib figure 생성
-        self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
         layout.addWidget(self.canvas)
         
@@ -117,3 +144,23 @@ if __name__ == '__main__':
     window.setGeometry(100, 100, 800, 600)
     window.show()
     sys.exit(app.exec_())
+    
+    
+# from matplotlib.figure import Figure
+# from matplotlib.pyplot import rcParams
+# import matplotlib.pyplot as plt
+
+# figure = Figure()
+# ax1 = figure.add_subplot(111)
+
+# # 축 레이블 및 제목 설정
+# ax1.set_xlabel('X 축')
+# ax1.set_ylabel('Y 축')
+# ax1.set_title('그래프')
+        
+# ax2 = figure.add_subplot(111)
+
+# # 축 레이블 및 제목 설정
+# ax2.set_xlabel('X 축')
+# ax2.set_ylabel('Y 축')
+# ax2.set_title('그래프')
