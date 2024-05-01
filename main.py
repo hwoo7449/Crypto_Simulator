@@ -19,26 +19,40 @@ class Coin():
     def Set_Start_Price(self):
         StartCoinPrice = [int(price) for price in ConfigLoader('config.ini').get_setting('Init', 'StartCoinPrice').split('|')]
         self.prices[0].append(ConfigLoader('config.ini').get_setting('Init', 'StartDate'))
+        
         self.prices[1].append(random.randint(StartCoinPrice[0], StartCoinPrice[1]))
     
     def Price_Change(self, date):
         self.prices[0].append(date)
+        
         CoinPriceCoverage = [int(price) for price in ConfigLoader('config.ini').get_setting('Init', 'CoinPriceCoverage').split('|')]
         self.prices[1].append(self.prices[1][-1] + random.randint(CoinPriceCoverage[0], CoinPriceCoverage[1]))
         
 class GraphSystem():
     def __init__(self):
         super().__init__()
-        plt.style.use(['seaborn-v0_8-notebook'])
+        plt.style.use(['seaborn-v0_8-notebook']) # 스타일 설정
         
-        self.DS = DateSystem()
         self.figure = plt.figure()
-        self.Coins = []
+        self.DS = DateSystem()
+        self.coins = []
         self.axes = []
         
+    def Add_New_Coin(self, coin: Coin):
+        self.coins.append(coin)
+        self.axes.append(self.figure.add_subplot(111))
+        self.axes[-1].set_xlabel(ConfigLoader('config.ini').get_setting('Graph', "xlabel"))
+        self.axes[-1].set_ylabel(ConfigLoader('config.ini').get_setting('Graph', "ylabel"))
+        self.axes[-1].set_title(ConfigLoader('config.ini').get_setting('Graph', "title"))
+        
+    # 범례 Label은 coin.name으로 설정
     def NextStep(self):
-        for coin in self.Coins:
+        for coin in self.coins:
             coin.Price_Change(self.DS.Get_Cur_Date_Str())
+            self.axes[coin.index].plot(coin.prices[0], coin.prices[1], label=coin.name)
+            
+        # DateSystem 날짜 변경
+        self.DS.Go_Next_Date()
 
 class DateSystem():
     def __init__(self):
@@ -57,7 +71,11 @@ class MainWindow(QMainWindow):
         self.initUI()      # UI 초기화 함수 호출
         
     def Notify_Next_Step(self):
-        pass
+        self.GS.NextStep()
+        self.canvas.draw()
+    
+    def Make_Coin(self, name):
+        self.GS.Add_New_Coin(Coin(name, len(self.GS.coins)))
 
     def initUI(self):
         self.setWindowTitle('Crypto Simulator')  # 창 제목 설정
@@ -155,6 +173,9 @@ if __name__ == '__main__':
     
     app = QApplication(sys.argv)
     window = MainWindow()
+    # 디버그용
+    window.Make_Coin("BTC")
+    window.Make_Coin("ETH")
     window.setGeometry(100, 100, 800, 600)
     window.show()
     sys.exit(app.exec_())
