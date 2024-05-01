@@ -36,20 +36,19 @@ class GraphSystem():
         self.figure = plt.figure()
         self.DS = DateSystem()
         self.coins = []
-        self.axes = []
+        self.axe = self.figure.add_subplot(111)
+        self.axe.set_xlabel(ConfigLoader('config.ini').get_setting('Graph', "xlabel"))
+        self.axe.set_ylabel(ConfigLoader('config.ini').get_setting('Graph', "ylabel"))
+        self.axe.set_title(ConfigLoader('config.ini').get_setting('Graph', "title"))
         
     def Add_New_Coin(self, coin: Coin):
         self.coins.append(coin)
-        self.axes.append(self.figure.add_subplot(111))
-        self.axes[-1].set_xlabel(ConfigLoader('config.ini').get_setting('Graph', "xlabel"))
-        self.axes[-1].set_ylabel(ConfigLoader('config.ini').get_setting('Graph', "ylabel"))
-        self.axes[-1].set_title(ConfigLoader('config.ini').get_setting('Graph', "title"))
         
     # 범례 Label은 coin.name으로 설정
     def NextStep(self):
         for coin in self.coins:
             coin.Price_Change(self.DS.Get_Cur_Date_Str())
-            self.axes[coin.index].plot(coin.prices[0], coin.prices[1], label=coin.name)
+            self.axe.plot(coin.prices[0], coin.prices[1], label=coin.name)
             
         # DateSystem 날짜 변경
         self.DS.Go_Next_Date()
@@ -111,7 +110,7 @@ class MainWindow(QMainWindow):
         # 타이머 설정 및 시그널 연결
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.Notify_Next_Step)
-        self.timer.start(100)
+        self.timer.start(1000)
 
         #self.plot()  # 그래프를 그리는 메소드
 
