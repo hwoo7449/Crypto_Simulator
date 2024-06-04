@@ -1,200 +1,241 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QHBoxLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QHBoxLayout, QComboBox, QProgressBar
 from PyQt5.QtCore import QTimer
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.pyplot import rcParams
 import matplotlib.pyplot as plt
-import numpy as np
 import random
 import datetime
 from Methods import ConfigLoader
 
-class Coin():
+class Coin:
     def __init__(self, name, index):
         self.name = name
-        self.prices = [ [], [] ]
+        self.prices = [[], []]
         self.index = index
-        self.Set_Start_Price()
+        self.set_start_price()
         
-    def Set_Start_Price(self):
-        StartCoinPrice = [int(price) for price in ConfigLoader('config.ini').get_setting('Init', 'StartCoinPrice').split('|')]
+    def set_start_price(self):
+        # 초기 코인 가격 설정
+        start_coin_price = [int(price) for price in ConfigLoader('config.ini').get_setting('Init', 'StartCoinPrice').split('|')]
         self.prices[0].append(ConfigLoader('config.ini').get_setting('Init', 'StartDate'))
-        
-        self.prices[1].append(random.randint(StartCoinPrice[0], StartCoinPrice[1]))
+        self.prices[1].append(random.randint(start_coin_price[0], start_coin_price[1]))
     
-    def Price_Change(self, date):
+    def price_change(self, date):
+        # 코인 가격 변동
         self.prices[0].append(date)
+        coin_price_coverage = [int(price) for price in ConfigLoader('config.ini').get_setting('Init', 'CoinPriceCoverage').split('|')]
+        self.prices[1].append(self.prices[1][-1] + random.randint(coin_price_coverage[0], coin_price_coverage[1]))
         
-        CoinPriceCoverage = [int(price) for price in ConfigLoader('config.ini').get_setting('Init', 'CoinPriceCoverage').split('|')]
-        self.prices[1].append(self.prices[1][-1] + random.randint(CoinPriceCoverage[0], CoinPriceCoverage[1]))
-        
-class GraphSystem():
+class GraphSystem:
     def __init__(self):
         super().__init__()
-        plt.style.use(['seaborn-v0_8-notebook']) # 스타일 설정
+        plt.style.use(['seaborn-v0_8-notebook'])  # 스타일 설정
         
         self.figure = plt.figure()
         self.DS = DateSystem()
         self.coins = []
         self.axe = self.figure.add_subplot(111)
-        self.axe.set_xlabel(ConfigLoader('config.ini').get_setting('Graph', "xlabel"))
-        self.axe.set_ylabel(ConfigLoader('config.ini').get_setting('Graph', "ylabel"))
-        self.axe.set_title(ConfigLoader('config.ini').get_setting('Graph', "title"))
+        self.axe.set_xlabel(ConfigLoader('config.ini').get_setting('Graph', 'xlabel'))
+        self.axe.set_ylabel(ConfigLoader('config.ini').get_setting('Graph', 'ylabel'))
+        self.axe.set_title(ConfigLoader('config.ini').get_setting('Graph', 'title'))
+        self.max_points = int(ConfigLoader('config.ini').get_setting('Graph', 'max_points'))
         
-    def Add_New_Coin(self, coin: Coin):
+    def add_new_coin(self, coin: Coin):
+        # 새로운 코인 추가
         self.coins.append(coin)
         
-    # 범례 Label은 coin.name으로 설정
-    def NextStep(self):
-        for coin in self.coins:
-            coin.Price_Change(self.DS.Get_Cur_Date_Str())
-            self.axe.plot(coin.prices[0], coin.prices[1], label=coin.name)
-            
-        # DateSystem 날짜 변경
-        self.DS.Go_Next_Date()
+    def next_step(self):
+        # 다음 단계로 넘어가면서 코인 가격 갱신
+        self.axe.clear()
+        self.axe.set_xlabel(ConfigLoader('config.ini').get_setting('Graph', 'xlabel'))
+        self.axe.set_ylabel(ConfigLoader('config.ini').get_setting('Graph', 'ylabel'))
+        self.axe.set_title(ConfigLoader('config.ini').get_setting('Graph', 'title'))
 
-class DateSystem():
+        for coin in self.coins:
+            coin.price_change(self.DS.get_cur_date_str())
+            
+            # 최대 점의 개수를 초과하면 오래된 데이터를 제거
+            if len(coin.prices[0]) > self.max_points:
+                coin.prices[0] = coin.prices[0][-self.max_points:]
+                coin.prices[1] = coin.prices[1][-self.max_points:]
+            
+            self.axe.plot(coin.prices[0], coin.prices[1], label=coin.name)
+        
+        # 날짜 변경
+        self.DS.go_next_date()
+        # 범례 추가
+        self.axe.legend(loc='upper right')
+        # x축 날짜 레이블 포맷팅
+        self.figure.autofmt_xdate()
+
+class DateSystem:
     def __init__(self):
         self.date = datetime.datetime.strptime(ConfigLoader('config.ini').get_setting('Init', 'StartDate'), "%Y-%m-%d")
         
-    def Get_Cur_Date_Str(self):
+    def get_cur_date_str(self):
+        # 현재 날짜 문자열 반환
         return self.date.strftime("%Y-%m-%d")
     
-    def Go_Next_Date(self):
+    def go_next_date(self):
+        # 다음 날짜로 이동
         self.date += datetime.timedelta(days=1)
+        
+class PlayerSystem:
+    def __init__(self):
+        self.config_loader = ConfigLoader('config.ini')
+        self.initial_funds = float(self.config_loader.get_setting('Player', 'InitialFunds'))
+        self.cash = self.initial_funds
+        self.portfolio = {}  # {coin_name: quantity}
+    
+    def buy_coin(self, coin_name, quantity, price):
+        cost = quantity * price
+        if self.cash >= cost:
+            self.cash -= cost
+            if coin_name in self.portfolio:
+                self.portfolio[coin_name] += quantity
+            else:
+                self.portfolio[coin_name] = quantity
+            return True
+        else:
+            return False
+    
+    def sell_coin(self, coin_name, quantity, price):
+        if coin_name in self.portfolio and self.portfolio[coin_name] >= quantity:
+            self.portfolio[coin_name] -= quantity
+            self.cash += quantity * price
+            if self.portfolio[coin_name] == 0:
+                del self.portfolio[coin_name]
+            return True
+        else:
+            return False
+    
+    def get_portfolio_value(self, coin_prices):
+        total_value = self.cash
+        for coin_name, quantity in self.portfolio.items():
+            total_value += quantity * coin_prices[coin_name]
+        return total_value
         
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.GS = GraphSystem()
-        self.initUI()      # UI 초기화 함수 호출
+        self.PS = PlayerSystem()
+        self.initUI()
         
-    def Notify_Next_Step(self):
-        self.GS.NextStep()
-        self.canvas.draw()
+        self.day_interval = int(ConfigLoader('config.ini').get_setting('Simulation', 'DayInterval'))
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_progress)
+        self.timer.start(self.day_interval // 4)
+        self.progress_step = self.day_interval // 4
+        self.current_progress = 0
     
-    def Make_Coin(self, name):
-        self.GS.Add_New_Coin(Coin(name, len(self.GS.coins)))
+    def update_progress(self):
+        self.current_progress += 1
+        self.progress_bar.setValue(self.current_progress * 25)
+        
+        if self.current_progress >= 4:
+            self.notify_next_step()
+            self.current_progress = 0
+    
+    def notify_next_step(self):
+        self.GS.next_step()
+        self.update_portfolio()
+        self.update_coin_info()
+        self.canvas.draw()
+
+    def make_coin(self, name):
+        self.GS.add_new_coin(Coin(name, len(self.GS.coins)))
+        self.coin_selector.addItem(name)
+
+    def buy_coin(self):
+        coin_name = self.coin_selector.currentText()
+        quantity = float(self.quantity_input.text())
+        price = self.GS.coins[self.coin_selector.currentIndex()].prices[1][-1]
+        if self.PS.buy_coin(coin_name, quantity, price):
+            self.update_portfolio()
+    
+    def sell_coin(self):
+        coin_name = self.coin_selector.currentText()
+        quantity = float(self.quantity_input.text())
+        price = self.GS.coins[self.coin_selector.currentIndex()].prices[1][-1]
+        if self.PS.sell_coin(coin_name, quantity, price):
+            self.update_portfolio()
+
+    def update_portfolio(self):
+        portfolio_str = '\n'.join([f"{coin}: {quantity}" for coin, quantity in self.PS.portfolio.items()])
+        self.portfolio_label.setText(f"Portfolio:\n{portfolio_str}\nCash: {self.PS.cash}")
+
+    def update_coin_info(self):
+        coin_name = self.coin_selector.currentText()
+        if coin_name:
+            price = self.GS.coins[self.coin_selector.currentIndex()].prices[1][-1]
+            self.current_price_label.setText(f"Current Price: {price}")
+            quantity = float(self.quantity_input.text()) if self.quantity_input.text() else 0
+            total_cost = price * quantity
+            self.total_cost_label.setText(f"Total Cost: {total_cost}")
 
     def initUI(self):
-        self.setWindowTitle('Crypto Simulator')  # 창 제목 설정
+        self.setWindowTitle('Crypto Simulator')
         
-        # 메인 위젯 생성
         self.main_widget = QWidget(self)
         self.setCentralWidget(self.main_widget)
         layout = QHBoxLayout(self.main_widget)
 
-        # Matplotlib figure 생성
         self.canvas = FigureCanvas(self.GS.figure)
         layout.addWidget(self.canvas)
         
-        # # 데이터 입력 위젯 레이아웃 생성
-        # data_layout = QVBoxLayout()
-        # layout.addLayout(data_layout)
-        
-        # # 데이터를 추가하기 위한 위젯들 생성
-        # self.x_label = QLabel("X 값:")
-        # self.x_input = QLineEdit()
-        # self.y_label = QLabel("Y 값:")
-        # self.y_input = QLineEdit()
-        # self.add_button = QPushButton("Add Data")
-        # self.add_button.clicked.connect(self.add_data)
+        right_panel = QVBoxLayout()
 
-        # # 데이터 입력 위젯들을 레이아웃에 추가
-        # layout.addWidget(self.x_label)
-        # layout.addWidget(self.x_input)
-        # layout.addWidget(self.y_label)
-        # layout.addWidget(self.y_input)
-        # layout.addWidget(self.add_button)
-        
-        # 타이머 설정 및 시그널 연결
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.Notify_Next_Step)
-        self.timer.start(1000)
+        self.portfolio_label = QLabel("Portfolio:\nCash: 0")
+        self.portfolio_label.setStyleSheet("background-color: white; padding: 10px;")
+        right_panel.addWidget(self.portfolio_label)
 
-        #self.plot()  # 그래프를 그리는 메소드
+        coin_control_layout = QVBoxLayout()
+        self.coin_selector = QComboBox()
+        self.coin_selector.currentIndexChanged.connect(self.update_coin_info)
+        coin_control_layout.addWidget(self.coin_selector)
 
-        # def add_data(self):
-        #     # 사용자 입력 가져오기
-        #     x_val = float(self.x_input.text())
-        #     y_val = float(self.y_input.text())
+        self.current_price_label = QLabel("Current Price: 0")
+        coin_control_layout.addWidget(self.current_price_label)
 
-        #     # 그래프에 데이터 추가
-        #     ax = self.figure.axes[0]
-        #     ax.plot(x_val, y_val, 'bo')  # 데이터 포인트 플롯
-        #     self.canvas.draw()
+        self.quantity_input = QLineEdit()
+        self.quantity_input.setPlaceholderText("Quantity")
+        self.quantity_input.textChanged.connect(self.update_coin_info)
+        coin_control_layout.addWidget(self.quantity_input)
 
-    def plot(self):
-        # 이전 그래프 지우기
-        self.figure.clear()
+        self.total_cost_label = QLabel("Total Cost: 0")
+        coin_control_layout.addWidget(self.total_cost_label)
 
-        # 샘플 데이터 생성
-        # x = np.linspace(0, 10, 100)
-        # y = np.sin(x)
+        self.buy_button = QPushButton("Buy")
+        self.buy_button.clicked.connect(self.buy_coin)
+        coin_control_layout.addWidget(self.buy_button)
 
-        # figure에 서브플롯 추가
-        ax = self.figure.add_subplot(111)
+        self.sell_button = QPushButton("Sell")
+        self.sell_button.clicked.connect(self.sell_coin)
+        coin_control_layout.addWidget(self.sell_button)
 
-        # 축 레이블 및 제목 설정
-        ax.set_xlabel('X 축')
-        ax.set_ylabel('Y 축')
-        ax.set_title('그래프')
-        
-        # 캔버스 갱신
-        self.canvas.draw()
-        
-    def add_random_data(self):
-        # 랜덤 데이터 생성
-        self.cur_ypos += random.randint(-5, 5)  # y 위치를 랜덤으로 변경
-        
-        # 현재 x 위치와 y 위치로 데이터 포인트 플롯
-        ax = self.figure.axes[0]
-        color = 'bo' if self.cur_ypos < 0 else 'ro' # 음수인 경우 파란색 양수인 경우 빨간색
-            
-        ax.plot(self.cur_xpos, self.cur_ypos, color)
-        self.points.append((self.cur_xpos, self.cur_ypos))
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setMaximum(100)
+        coin_control_layout.addWidget(self.progress_bar)
 
-        # 포인트 개수가 50을 초과하는지 확인
-        if len(self.points) > 50:
-            # 첫 번째 포인트 삭제
-            ax.lines[0].remove()
-            del self.points[0]
-            
-        # 현재 x 위치 증가
-        self.cur_xpos += 1
-        
-        # 캔버스 갱신
-        self.canvas.draw()
+        right_panel.addLayout(coin_control_layout)
+        layout.addLayout(right_panel)
 
 if __name__ == '__main__':
-    rcParams['font.family'] ='Malgun Gothic'
-    rcParams['axes.unicode_minus'] =False
+    # matplotlib 폰트 설정
+    rcParams['font.family'] = 'Malgun Gothic'
+    rcParams['axes.unicode_minus'] = False
     
+    # 애플리케이션 실행
     app = QApplication(sys.argv)
     window = MainWindow()
-    # 디버그용
-    window.Make_Coin("BTC")
-    window.Make_Coin("ETH")
+    
+    # 디버그용 코인 추가
+    window.make_coin("BTC")
+    window.make_coin("ETH")
     window.setGeometry(100, 100, 800, 600)
     window.show()
+    
+    # 애플리케이션 실행 종료
     sys.exit(app.exec_())
-    
-    
-# from matplotlib.figure import Figure
-# from matplotlib.pyplot import rcParams
-# import matplotlib.pyplot as plt
-
-# figure = Figure()
-# ax1 = figure.add_subplot(111)
-
-# # 축 레이블 및 제목 설정
-# ax1.set_xlabel('X 축')
-# ax1.set_ylabel('Y 축')
-# ax1.set_title('그래프')
-        
-# ax2 = figure.add_subplot(111)
-
-# # 축 레이블 및 제목 설정
-# ax2.set_xlabel('X 축')
-# ax2.set_ylabel('Y 축')
-# ax2.set_title('그래프')
