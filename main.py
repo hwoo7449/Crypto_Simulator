@@ -14,6 +14,7 @@ class Coin:
         self.prices = [[], []]
         self.index = index
         self.color = color if color else "#{:06x}".format(random.randint(0, 0xFFFFFF))  # 지정된 색깔이 없을 경우 랜덤 색상 지정
+        self.delisted = False  # 상장폐지 여부를 가리키는 변수
         self.set_start_price()
         
     def set_start_price(self):
@@ -24,9 +25,20 @@ class Coin:
         self.prices[1].append(random.randint(start_coin_price[0], start_coin_price[1]))
 
     def price_change(self, date):
-        self.prices[0].append(date)
-        coin_price_coverage = [int(price) for price in ConfigLoader('config.ini').get_setting('Init', 'CoinPriceCoverage').split('|')]
-        self.prices[1].append(self.prices[1][-1] + random.randint(coin_price_coverage[0], coin_price_coverage[1]))
+        if not self.delisted:  # 상장폐지가 되지 않은 경우에만 가격 변동
+            coin_price_coverage = [int(price) for price in ConfigLoader('config.ini').get_setting('Init', 'CoinPriceCoverage').split('|')]
+            new_price = self.prices[1][-1] + random.randint(coin_price_coverage[0], coin_price_coverage[1])
+            
+            if new_price <= 0:  # 가격이 0 이하로 내려가면 상장폐지 처리
+                new_price = 0
+                self.delisted = True
+
+            self.prices[0].append(date)
+            self.prices[1].append(new_price)
+        else:
+            # 상장폐지된 경우, 가격 0을 유지
+            self.prices[0].append(date)
+            self.prices[1].append(0)
         
 class GraphSystem:
     def __init__(self):
@@ -79,9 +91,7 @@ class GraphSystem:
         self.axe.legend(loc='best')  # 범례를 빈곳으로 자동 배치
         self.figure.autofmt_xdate()
         self.initial_date_passed = True  # 초기 날짜를 지났음을 표시
-
-
-
+        
 class DateSystem:
     def __init__(self):
         self.config_loader = ConfigLoader('config.ini')
@@ -98,26 +108,29 @@ class DateSystem:
 class PlayerSystem:
     def __init__(self):
         self.config_loader = ConfigLoader('config.ini')
-        self.initial_funds = float(self.config_loader.get_setting('Player', 'InitialFunds'))
+        self.initial_funds = int(float(self.config_loader.get_setting('Player', 'InitialFunds')))
         self.cash = self.initial_funds
         self.portfolio = {}  # {coin_name: quantity}
     
     def buy_coin(self, coin_name, quantity, price):
-        cost = quantity * price
+        if price <= 0:
+            return False
+        
+        cost = int(quantity * price)
         if self.cash >= cost:
             self.cash -= cost
             if coin_name in self.portfolio:
-                self.portfolio[coin_name] += quantity
+                self.portfolio[coin_name] += int(quantity)
             else:
-                self.portfolio[coin_name] = quantity
+                self.portfolio[coin_name] = int(quantity)
             return True
         else:
             return False
     
     def sell_coin(self, coin_name, quantity, price):
         if coin_name in self.portfolio and self.portfolio[coin_name] >= quantity:
-            self.portfolio[coin_name] -= quantity
-            self.cash += quantity * price
+            self.portfolio[coin_name] -= int(quantity)
+            self.cash += int(quantity * price)
             if self.portfolio[coin_name] == 0:
                 del self.portfolio[coin_name]
             return True
@@ -165,14 +178,14 @@ class MainWindow(QMainWindow):
 
     def buy_coin(self):
         coin_name = self.coin_selector.currentText()
-        quantity = float(self.quantity_input.text())
+        quantity = int(self.quantity_input.text())
         price = self.GS.coins[self.coin_selector.currentIndex()].prices[1][-1]
         if self.PS.buy_coin(coin_name, quantity, price):
             self.update_portfolio()
     
     def sell_coin(self):
         coin_name = self.coin_selector.currentText()
-        quantity = float(self.quantity_input.text())
+        quantity = int(self.quantity_input.text())
         price = self.GS.coins[self.coin_selector.currentIndex()].prices[1][-1]
         if self.PS.sell_coin(coin_name, quantity, price):
             self.update_portfolio()
@@ -186,7 +199,7 @@ class MainWindow(QMainWindow):
         if coin_name:
             price = self.GS.coins[self.coin_selector.currentIndex()].prices[1][-1]
             self.current_price_label.setText(f"{self.config_loader.get_setting('Labels', 'CurrentPriceLabel')}: {price}")
-            quantity = float(self.quantity_input.text()) if self.quantity_input.text() else 0
+            quantity = int(self.quantity_input.text()) if self.quantity_input.text() else 0
             total_cost = price * quantity
             self.total_cost_label.setText(f"{self.config_loader.get_setting('Labels', 'TotalCostLabel')}: {total_cost}")
 
