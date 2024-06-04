@@ -12,6 +12,7 @@ class GraphSystem:
         self.DS = DateSystem()
         self.coins = []
         self.axe = self.figure.add_subplot(111)
+        # 설정 파일에서 그래프 레이블, 제목, 최대 포인트 수 등을 불러와 초기화
         self.axe.set_xlabel(ConfigLoader('config.ini').get_setting('Graph', 'xlabel'))
         self.axe.set_ylabel(ConfigLoader('config.ini').get_setting('Graph', 'ylabel'))
         self.axe.set_title(ConfigLoader('config.ini').get_setting('Graph', 'title'))
@@ -20,6 +21,7 @@ class GraphSystem:
         self.annotations = []  # 가격 주석을 저장할 리스트
         
     def add_new_coin(self, name, color=None):
+        # 새로운 코인을 추가
         coin = Coin(name, len(self.coins), color)
         self.coins.append(coin)
         

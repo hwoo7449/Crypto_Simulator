@@ -11,10 +11,12 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.config_loader = ConfigLoader('config.ini')
+        # GraphSystem 및 PlayerSystem 인스턴스를 생성하여 초기화
         self.GS = GraphSystem()
         self.PS = PlayerSystem()
         self.initUI()
         
+        # 설정 파일에서 시뮬레이션 간격을 불러와 타이머 설정
         self.day_interval = int(self.config_loader.get_setting('Simulation', 'DayInterval'))
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_progress)
@@ -23,6 +25,7 @@ class MainWindow(QMainWindow):
         self.current_progress = 0
     
     def update_progress(self):
+        # 진행 상태를 업데이트하고 프로그레스 바에 반영
         self.current_progress += 1
         self.progress_bar.setValue(self.current_progress * 25)
         
@@ -31,16 +34,19 @@ class MainWindow(QMainWindow):
             self.current_progress = 0
     
     def notify_next_step(self):
+        # 다음 스텝을 진행하고 포트폴리오 및 코인 정보를 업데이트
         self.GS.next_step()
         self.update_portfolio()
         self.update_coin_info()
         self.canvas.draw()
 
     def make_coin(self, name, color=None):
+        # 새로운 코인을 생성하고 선택 목록에 추가
         self.GS.add_new_coin(name, color)
         self.coin_selector.addItem(name)
 
     def buy_coin(self):
+        # 코인을 구매하고 포트폴리오를 업데이트
         coin_name = self.coin_selector.currentText()
         quantity = int(self.quantity_input.text())
         price = self.GS.coins[self.coin_selector.currentIndex()].prices[1][-1]
@@ -48,6 +54,7 @@ class MainWindow(QMainWindow):
             self.update_portfolio()
     
     def sell_coin(self):
+        # 코인을 판매하고 포트폴리오를 업데이트
         coin_name = self.coin_selector.currentText()
         quantity = int(self.quantity_input.text())
         price = self.GS.coins[self.coin_selector.currentIndex()].prices[1][-1]
@@ -55,10 +62,12 @@ class MainWindow(QMainWindow):
             self.update_portfolio()
 
     def update_portfolio(self):
+        # 포트폴리오의 현황을 업데이트하여 라벨에 표시
         portfolio_str = '\n'.join([f"{coin}: {quantity}" for coin, quantity in self.PS.portfolio.items()])
         self.portfolio_label.setText(f"{self.config_loader.get_setting('Labels', 'PortfolioLabel')}:\n{portfolio_str}\n{self.config_loader.get_setting('Labels', 'CashLabel')}: {self.PS.cash}")
 
     def update_coin_info(self):
+        # 선택된 코인의 정보를 업데이트하여 라벨에 표시
         coin_name = self.coin_selector.currentText()
         if coin_name:
             price = self.GS.coins[self.coin_selector.currentIndex()].prices[1][-1]
@@ -68,6 +77,7 @@ class MainWindow(QMainWindow):
             self.total_cost_label.setText(f"{self.config_loader.get_setting('Labels', 'TotalCostLabel')}: {total_cost}")
 
     def initUI(self):
+        # UI 초기화
         self.setWindowTitle('Crypto Simulator')
         
         self.main_widget = QWidget(self)

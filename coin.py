@@ -11,8 +11,11 @@ class Coin:
         self.set_start_price()
         
     def set_start_price(self):
+        # ConfigLoader 인스턴스를 생성하여 설정 파일을 불러옴
         config_loader = ConfigLoader('config.ini')
+        # 설정 파일에서 시작 가격 범위를 불러와 초기화
         start_coin_price = [int(price) for price in config_loader.get_setting('Init', 'StartCoinPrice').split('|')]
+        # 설정 파일에서 시작 날짜를 불러옴
         start_date = config_loader.get_setting('Init', 'StartDate')
         self.prices[0].append(start_date)
         self.prices[1].append(random.randint(start_coin_price[0], start_coin_price[1]))
