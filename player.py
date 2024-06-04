@@ -1,5 +1,4 @@
 from Methods import ConfigLoader
-import random
 
 class PlayerSystem:
     def __init__(self):
