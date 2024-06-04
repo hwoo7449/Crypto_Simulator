@@ -133,11 +133,12 @@ class PlayerSystem:
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.config_loader = ConfigLoader('config.ini')
         self.GS = GraphSystem()
         self.PS = PlayerSystem()
         self.initUI()
         
-        self.day_interval = int(ConfigLoader('config.ini').get_setting('Simulation', 'DayInterval'))
+        self.day_interval = int(self.config_loader.get_setting('Simulation', 'DayInterval'))
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_progress)
         self.timer.start(self.day_interval // 4)
@@ -178,16 +179,16 @@ class MainWindow(QMainWindow):
 
     def update_portfolio(self):
         portfolio_str = '\n'.join([f"{coin}: {quantity}" for coin, quantity in self.PS.portfolio.items()])
-        self.portfolio_label.setText(f"Portfolio:\n{portfolio_str}\nCash: {self.PS.cash}")
+        self.portfolio_label.setText(f"{self.config_loader.get_setting('Labels', 'PortfolioLabel')}:\n{portfolio_str}\n{self.config_loader.get_setting('Labels', 'CashLabel')}: {self.PS.cash}")
 
     def update_coin_info(self):
         coin_name = self.coin_selector.currentText()
         if coin_name:
             price = self.GS.coins[self.coin_selector.currentIndex()].prices[1][-1]
-            self.current_price_label.setText(f"Current Price: {price}")
+            self.current_price_label.setText(f"{self.config_loader.get_setting('Labels', 'CurrentPriceLabel')}: {price}")
             quantity = float(self.quantity_input.text()) if self.quantity_input.text() else 0
             total_cost = price * quantity
-            self.total_cost_label.setText(f"Total Cost: {total_cost}")
+            self.total_cost_label.setText(f"{self.config_loader.get_setting('Labels', 'TotalCostLabel')}: {total_cost}")
 
     def initUI(self):
         self.setWindowTitle('Crypto Simulator')
@@ -201,7 +202,7 @@ class MainWindow(QMainWindow):
         
         right_panel = QVBoxLayout()
 
-        self.portfolio_label = QLabel("Portfolio:\nCash: 0")
+        self.portfolio_label = QLabel(f"{self.config_loader.get_setting('Labels', 'PortfolioLabel')}:\n{self.config_loader.get_setting('Labels', 'CashLabel')}: 0")
         self.portfolio_label.setStyleSheet("background-color: white; padding: 10px;")
         right_panel.addWidget(self.portfolio_label)
 
@@ -210,22 +211,22 @@ class MainWindow(QMainWindow):
         self.coin_selector.currentIndexChanged.connect(self.update_coin_info)
         coin_control_layout.addWidget(self.coin_selector)
 
-        self.current_price_label = QLabel("Current Price: 0")
+        self.current_price_label = QLabel(f"{self.config_loader.get_setting('Labels', 'CurrentPriceLabel')}: 0")
         coin_control_layout.addWidget(self.current_price_label)
 
         self.quantity_input = QLineEdit()
-        self.quantity_input.setPlaceholderText("Quantity")
+        self.quantity_input.setPlaceholderText(self.config_loader.get_setting('Labels', 'QuantityPlaceholder'))
         self.quantity_input.textChanged.connect(self.update_coin_info)
         coin_control_layout.addWidget(self.quantity_input)
 
-        self.total_cost_label = QLabel("Total Cost: 0")
+        self.total_cost_label = QLabel(f"{self.config_loader.get_setting('Labels', 'TotalCostLabel')}: 0")
         coin_control_layout.addWidget(self.total_cost_label)
 
-        self.buy_button = QPushButton("Buy")
+        self.buy_button = QPushButton(self.config_loader.get_setting('Labels', 'BuyButton'))
         self.buy_button.clicked.connect(self.buy_coin)
         coin_control_layout.addWidget(self.buy_button)
 
-        self.sell_button = QPushButton("Sell")
+        self.sell_button = QPushButton(self.config_loader.get_setting('Labels', 'SellButton'))
         self.sell_button.clicked.connect(self.sell_coin)
         coin_control_layout.addWidget(self.sell_button)
 
@@ -235,8 +236,6 @@ class MainWindow(QMainWindow):
 
         right_panel.addLayout(coin_control_layout)
         layout.addLayout(right_panel)
-
-
 
 if __name__ == '__main__':
     # matplotlib 폰트 설정
