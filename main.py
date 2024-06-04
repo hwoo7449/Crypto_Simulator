@@ -9,20 +9,21 @@ import datetime
 from Methods import ConfigLoader
 
 class Coin:
-    def __init__(self, name, index):
+    def __init__(self, name, index, color=None):
         self.name = name
         self.prices = [[], []]
         self.index = index
+        self.color = color if color else "#{:06x}".format(random.randint(0, 0xFFFFFF))  # 지정된 색깔이 없을 경우 랜덤 색상 지정
         self.set_start_price()
         
     def set_start_price(self):
-        # 초기 코인 가격 설정
-        start_coin_price = [int(price) for price in ConfigLoader('config.ini').get_setting('Init', 'StartCoinPrice').split('|')]
-        self.prices[0].append(ConfigLoader('config.ini').get_setting('Init', 'StartDate'))
+        config_loader = ConfigLoader('config.ini')
+        start_coin_price = [int(price) for price in config_loader.get_setting('Init', 'StartCoinPrice').split('|')]
+        start_date = config_loader.get_setting('Init', 'StartDate')
+        self.prices[0].append(start_date)
         self.prices[1].append(random.randint(start_coin_price[0], start_coin_price[1]))
-    
+
     def price_change(self, date):
-        # 코인 가격 변동
         self.prices[0].append(date)
         coin_price_coverage = [int(price) for price in ConfigLoader('config.ini').get_setting('Init', 'CoinPriceCoverage').split('|')]
         self.prices[1].append(self.prices[1][-1] + random.randint(coin_price_coverage[0], coin_price_coverage[1]))
@@ -30,7 +31,7 @@ class Coin:
 class GraphSystem:
     def __init__(self):
         super().__init__()
-        plt.style.use(['seaborn-v0_8-notebook'])  # 스타일 설정
+        plt.style.use(['seaborn-v0_8-notebook'])
         
         self.figure = plt.figure()
         self.DS = DateSystem()
@@ -40,46 +41,59 @@ class GraphSystem:
         self.axe.set_ylabel(ConfigLoader('config.ini').get_setting('Graph', 'ylabel'))
         self.axe.set_title(ConfigLoader('config.ini').get_setting('Graph', 'title'))
         self.max_points = int(ConfigLoader('config.ini').get_setting('Graph', 'max_points'))
+        self.initial_date_passed = False  # 초기 날짜를 지나기 전 상태를 추적
+        self.annotations = []  # 가격 주석을 저장할 리스트
         
-    def add_new_coin(self, coin: Coin):
-        # 새로운 코인 추가
+    def add_new_coin(self, name, color=None):
+        coin = Coin(name, len(self.coins), color)
         self.coins.append(coin)
         
     def next_step(self):
-        # 다음 단계로 넘어가면서 코인 가격 갱신
         self.axe.clear()
         self.axe.set_xlabel(ConfigLoader('config.ini').get_setting('Graph', 'xlabel'))
         self.axe.set_ylabel(ConfigLoader('config.ini').get_setting('Graph', 'ylabel'))
         self.axe.set_title(ConfigLoader('config.ini').get_setting('Graph', 'title'))
-
+        
+        for annotation in self.annotations:
+            annotation.remove()  # 이전 주석 제거
+        self.annotations.clear()
+        
         for coin in self.coins:
-            coin.price_change(self.DS.get_cur_date_str())
+            if self.initial_date_passed:  # 초기 날짜를 지난 경우에만 가격을 변경
+                coin.price_change(self.DS.get_cur_date_str())
             
-            # 최대 점의 개수를 초과하면 오래된 데이터를 제거
             if len(coin.prices[0]) > self.max_points:
                 coin.prices[0] = coin.prices[0][-self.max_points:]
                 coin.prices[1] = coin.prices[1][-self.max_points:]
             
-            self.axe.plot(coin.prices[0], coin.prices[1], label=coin.name)
+            self.axe.plot(coin.prices[0], coin.prices[1], label=coin.name, color=coin.color)
+            
+            # 최신 가격을 그래프에 주석으로 추가
+            latest_price = coin.prices[1][-1]
+            latest_date = coin.prices[0][-1]
+            annotation = self.axe.annotate(f'{latest_price}', xy=(latest_date, latest_price),
+                                           xytext=(0, -10), textcoords='offset points', ha='center', color=coin.color)
+            self.annotations.append(annotation)
         
-        # 날짜 변경
         self.DS.go_next_date()
-        # 범례 추가
-        self.axe.legend(loc='upper right')
-        # x축 날짜 레이블 포맷팅
+        self.axe.legend(loc='best')  # 범례를 빈곳으로 자동 배치
         self.figure.autofmt_xdate()
+        self.initial_date_passed = True  # 초기 날짜를 지났음을 표시
+
+
 
 class DateSystem:
     def __init__(self):
-        self.date = datetime.datetime.strptime(ConfigLoader('config.ini').get_setting('Init', 'StartDate'), "%Y-%m-%d")
+        self.config_loader = ConfigLoader('config.ini')
+        self.start_date = datetime.datetime.strptime(self.config_loader.get_setting('Init', 'StartDate'), "%Y-%m-%d")
+        self.date = self.start_date
         
     def get_cur_date_str(self):
-        # 현재 날짜 문자열 반환
         return self.date.strftime("%Y-%m-%d")
     
     def go_next_date(self):
-        # 다음 날짜로 이동
         self.date += datetime.timedelta(days=1)
+
         
 class PlayerSystem:
     def __init__(self):
@@ -144,8 +158,8 @@ class MainWindow(QMainWindow):
         self.update_coin_info()
         self.canvas.draw()
 
-    def make_coin(self, name):
-        self.GS.add_new_coin(Coin(name, len(self.GS.coins)))
+    def make_coin(self, name, color=None):
+        self.GS.add_new_coin(name, color)
         self.coin_selector.addItem(name)
 
     def buy_coin(self):
@@ -222,6 +236,8 @@ class MainWindow(QMainWindow):
         right_panel.addLayout(coin_control_layout)
         layout.addLayout(right_panel)
 
+
+
 if __name__ == '__main__':
     # matplotlib 폰트 설정
     rcParams['font.family'] = 'Malgun Gothic'
@@ -232,8 +248,8 @@ if __name__ == '__main__':
     window = MainWindow()
     
     # 디버그용 코인 추가
-    window.make_coin("BTC")
-    window.make_coin("ETH")
+    window.make_coin("BTC", "blue")  # CSS 색상 이름 사용
+    window.make_coin("ETH", "#FF5733") # 16진수 색상 코드 사용
     window.setGeometry(100, 100, 800, 600)
     window.show()
     
