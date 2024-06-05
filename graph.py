@@ -12,7 +12,6 @@ class GraphSystem:
         self.DS = DateSystem()
         self.coins = []
         self.axe = self.figure.add_subplot(111)
-        # 설정 파일에서 그래프 레이블, 제목, 최대 포인트 수 등을 불러와 초기화
         self.axe.set_xlabel(ConfigLoader('config.ini').get_setting('Graph', 'xlabel'))
         self.axe.set_ylabel(ConfigLoader('config.ini').get_setting('Graph', 'ylabel'))
         self.axe.set_title(ConfigLoader('config.ini').get_setting('Graph', 'title'))
@@ -21,8 +20,8 @@ class GraphSystem:
         self.annotations = []  # 가격 주석을 저장할 리스트
         
     def add_new_coin(self, name, color=None):
-        # 새로운 코인을 추가
-        coin = Coin(name, len(self.coins), color)
+        start_date = self.DS.get_cur_date_str()
+        coin = Coin(name, len(self.coins), start_date, color)
         self.coins.append(coin)
         
     def next_step(self):
@@ -53,6 +52,6 @@ class GraphSystem:
             self.annotations.append(annotation)
         
         self.DS.go_next_date()
-        self.axe.legend(loc='best')  # 범례를 빈곳으로 자동 배치
+        self.axe.legend(loc='best')
         self.figure.autofmt_xdate()
-        self.initial_date_passed = True  # 초기 날짜를 지났음을 표시
+        self.initial_date_passed = True
