@@ -79,7 +79,7 @@ class MainWindow(QMainWindow):
             total_cost = price * quantity
             self.total_cost_label.setText(f"{self.config_loader.get_setting('Labels', 'TotalCostLabel')}: {total_cost}")
 
-    def display_event_message(self, title, message):
+    def display_event_message(self, title, message, duration):
         self.event_label.setText(f"{title}: {message}")
 
         # 애니메이션 설정
@@ -88,8 +88,8 @@ class MainWindow(QMainWindow):
         self.animation_down.setEndValue(QRect(0, 0, self.width(), 50))
         self.animation_down.start()
 
-        QTimer.singleShot(1000, self.hide_event_message)
-
+        QTimer.singleShot(duration, self.hide_event_message)
+        
     def hide_event_message(self):
         # 애니메이션 설정
         self.animation_up.setDuration(100)

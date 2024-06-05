@@ -6,16 +6,14 @@ class Event:
         raise NotImplementedError("Subclasses should implement this method")
 
     def show_message(self, parent, title, message):
-        start_time = time.time()  # 시간 측정 시작
-        parent.display_event_message(title, message)
-        end_time = time.time()  # 시간 측정 끝
-        print(f"Message display time: {end_time - start_time} seconds")
+        display_duration = int(parent.config_loader.get_setting('Events', 'EventDisplayDuration'))
+        parent.display_event_message(title, message, display_duration)
 
 class NewCoinEvent(Event):
     def execute(self, GS, PS, parent):
         coin_name = f"Coin{len(GS.coins) + 1}"
         GS.add_new_coin(coin_name)
-        self.show_message(parent, "New Coin", f"A new coin {coin_name} has been listed!")
+        self.show_message(parent, "새로운 코인", f"새로운 코인 {coin_name}이(가) 상장되었습니다!")
 
 class SuddenRiseEvent(Event):
     def execute(self, GS, PS, parent):
@@ -24,7 +22,7 @@ class SuddenRiseEvent(Event):
         coin = random.choice(GS.coins)
         if not coin.delisted:
             coin.apply_price_modifier(1.5)
-            self.show_message(parent, "Sudden Rise", f"The coin {coin.name} has suddenly risen by 50%!")
+            self.show_message(parent, "급등", f"코인 {coin.name}이(가) 갑자기 50% 상승했습니다!")
 
 class SuddenFallEvent(Event):
     def execute(self, GS, PS, parent):
@@ -33,7 +31,7 @@ class SuddenFallEvent(Event):
         coin = random.choice(GS.coins)
         if not coin.delisted:
             coin.apply_price_modifier(0.5)
-            self.show_message(parent, "Sudden Fall", f"The coin {coin.name} has suddenly fallen by 50%!")
+            self.show_message(parent, "급락", f"코인 {coin.name}이(가) 갑자기 50% 하락했습니다!")
 
 class DelistEvent(Event):
     def execute(self, GS, PS, parent):
@@ -43,7 +41,7 @@ class DelistEvent(Event):
         if not coin.delisted:
             coin.delisted = True
             coin.prices[1][-1] = 0
-            self.show_message(parent, "Delisted", f"The coin {coin.name} has been delisted!")
+            self.show_message(parent, "상장 폐지", f"코인 {coin.name}이(가) 상장 폐지되었습니다!")
 
 class EventSystem:
     def __init__(self, GS, PS, config_loader):
@@ -67,12 +65,9 @@ class EventSystem:
     def check_for_event(self, parent):
         self.day_counter += 1
         if self.day_counter % self.event_interval == 0:
-            start_time = time.time()  # 시간 측정 시작
             event = self.select_event()
             if event:
                 event.execute(self.GS, self.PS, parent)
-            end_time = time.time()  # 시간 측정 끝
-            print(f"Event execution time: {end_time - start_time} seconds")
 
     def select_event(self):
         total = sum(prob for _, prob in self.events)
