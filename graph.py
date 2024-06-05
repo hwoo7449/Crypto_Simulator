@@ -24,7 +24,7 @@ class GraphSystem:
         coin = Coin(name, len(self.coins), start_date, color)
         self.coins.append(coin)
         
-    def next_step(self):
+    def draw_coins(self):
         self.axe.clear()
         self.axe.set_xlabel(ConfigLoader('config.ini').get_setting('Graph', 'xlabel'))
         self.axe.set_ylabel(ConfigLoader('config.ini').get_setting('Graph', 'ylabel'))
@@ -35,9 +35,6 @@ class GraphSystem:
         self.annotations.clear()
         
         for coin in self.coins:
-            if self.initial_date_passed:  # 초기 날짜를 지난 경우에만 가격을 변경
-                coin.price_change(self.DS.get_cur_date_str())
-            
             if len(coin.prices[0]) > self.max_points:
                 coin.prices[0] = coin.prices[0][-self.max_points:]
                 coin.prices[1] = coin.prices[1][-self.max_points:]
@@ -47,11 +44,17 @@ class GraphSystem:
             # 최신 가격을 그래프에 주석으로 추가
             latest_price = coin.prices[1][-1]
             latest_date = coin.prices[0][-1]
-            annotation = self.axe.annotate(f'{latest_price}', xy=(latest_date, latest_price),
-                                           xytext=(0, -10), textcoords='offset points', ha='center', color=coin.color)
+            annotation = self.axe.annotate(f'{latest_price}', xy=(latest_date, latest_price), xytext=(0, -10), textcoords='offset points', ha='center', color=coin.color)
             self.annotations.append(annotation)
         
-        self.DS.go_next_date()
         self.axe.legend(loc='best')
         self.figure.autofmt_xdate()
         self.initial_date_passed = True
+
+    def next_step(self):
+        for coin in self.coins:
+            if self.initial_date_passed:  # 초기 날짜를 지난 경우에만 가격을 변경
+                coin.price_change(self.DS.get_cur_date_str())
+        
+        self.DS.go_next_date()
+        self.draw_coins()

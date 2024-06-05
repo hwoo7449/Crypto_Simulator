@@ -24,6 +24,14 @@ class MainWindow(QMainWindow):
         self.progress_step = self.day_interval // 4
         self.current_progress = 0
 
+        QTimer.singleShot(0, self.notify_next_step)  # UI 초기화 후 첫 번째 스텝 실행
+
+        # 애니메이션 객체를 멤버 변수로 선언
+        self.animation_down = QPropertyAnimation(self.event_label, b"geometry")
+        self.animation_up = QPropertyAnimation(self.event_label, b"geometry")
+
+        QTimer.singleShot(0, self.notify_next_step)  # UI 초기화 후 첫 번째 스텝 실행
+
     def update_progress(self):
         self.current_progress += 1
         self.progress_bar.setValue(self.current_progress * 25)
@@ -34,10 +42,10 @@ class MainWindow(QMainWindow):
 
     def notify_next_step(self):
         self.GS.next_step()  # 날짜 업데이트
+        self.ES.check_for_event(self)  # 이벤트 체크
         self.canvas.draw()    # 그래프 업데이트
         self.update_portfolio()  # 포트폴리오 업데이트
         self.update_coin_info()  # 코인 정보 업데이트
-        self.ES.check_for_event(self)  # 이벤트 체크
         self.update_debug_info()  # 디버그 정보 업데이트
 
     def make_coin(self, name, color=None):
@@ -75,19 +83,21 @@ class MainWindow(QMainWindow):
 
     def display_event_message(self, title, message):
         self.event_label.setText(f"{title}: {message}")
-        animation_down = QPropertyAnimation(self.event_label, b"geometry")
-        animation_down.setDuration(500)
-        animation_down.setStartValue(QRect(0, -50, self.width(), 50))
-        animation_down.setEndValue(QRect(0, 0, self.width(), 50))
-        animation_down.start()
-        QTimer.singleShot(2000, self.hide_event_message)
+
+        # 애니메이션 설정
+        self.animation_down.setDuration(100)
+        self.animation_down.setStartValue(QRect(0, -50, self.width(), 50))
+        self.animation_down.setEndValue(QRect(0, 0, self.width(), 50))
+        self.animation_down.start()
+
+        QTimer.singleShot(1000, self.hide_event_message)
 
     def hide_event_message(self):
-        animation_up = QPropertyAnimation(self.event_label, b"geometry")
-        animation_up.setDuration(500)
-        animation_up.setStartValue(QRect(0, 0, self.width(), 50))
-        animation_up.setEndValue(QRect(0, -50, self.width(), 50))
-        animation_up.start()
+        # 애니메이션 설정
+        self.animation_up.setDuration(100)
+        self.animation_up.setStartValue(QRect(0, 0, self.width(), 50))
+        self.animation_up.setEndValue(QRect(0, -50, self.width(), 50))
+        self.animation_up.start()
 
     def update_debug_info(self):
         debug_info = "DateSystem:\n"

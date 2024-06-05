@@ -1,11 +1,15 @@
 import random
+import time
 
 class Event:
     def execute(self, GS, PS, parent):
         raise NotImplementedError("Subclasses should implement this method")
 
     def show_message(self, parent, title, message):
+        start_time = time.time()  # 시간 측정 시작
         parent.display_event_message(title, message)
+        end_time = time.time()  # 시간 측정 끝
+        print(f"Message display time: {end_time - start_time} seconds")
 
 class NewCoinEvent(Event):
     def execute(self, GS, PS, parent):
@@ -63,9 +67,12 @@ class EventSystem:
     def check_for_event(self, parent):
         self.day_counter += 1
         if self.day_counter % self.event_interval == 0:
+            start_time = time.time()  # 시간 측정 시작
             event = self.select_event()
             if event:
                 event.execute(self.GS, self.PS, parent)
+            end_time = time.time()  # 시간 측정 끝
+            print(f"Event execution time: {end_time - start_time} seconds")
 
     def select_event(self):
         total = sum(prob for _, prob in self.events)
