@@ -80,22 +80,8 @@ class MainWindow(QMainWindow):
             self.total_cost_label.setText(f"{self.config_loader.get_setting('Labels', 'TotalCostLabel')}: {total_cost}")
 
     def display_event_message(self, title, message, duration):
-        self.event_label.setText(f"{title}: {message}")
-
-        # 애니메이션 설정
-        self.animation_down.setDuration(100)
-        self.animation_down.setStartValue(QRect(0, -50, self.width(), 50))
-        self.animation_down.setEndValue(QRect(0, 0, self.width(), 50))
-        self.animation_down.start()
-
-        QTimer.singleShot(duration, self.hide_event_message)
-        
-    def hide_event_message(self):
-        # 애니메이션 설정
-        self.animation_up.setDuration(100)
-        self.animation_up.setStartValue(QRect(0, 0, self.width(), 50))
-        self.animation_up.setEndValue(QRect(0, -50, self.width(), 50))
-        self.animation_up.start()
+        news_item = f"{self.GS.DS.get_cur_date_str()} - {title}: {message}"
+        self.news_feed.append(news_item)
 
     def update_debug_info(self):
         debug_info = "DateSystem:\n"
@@ -119,6 +105,7 @@ class MainWindow(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle('Crypto Simulator')
+        self.setGeometry(100, 100, 1000, 800)
 
         self.main_widget = QWidget(self)
         self.setCentralWidget(self.main_widget)
@@ -172,6 +159,18 @@ class MainWindow(QMainWindow):
 
         layout.addLayout(canvas_layout)
 
+        # 뉴스 피드 추가
+        news_layout = QVBoxLayout()
+        news_title = QLabel("최신 뉴스")
+        news_title.setStyleSheet("font-size: 18px; font-weight: bold;")
+        news_layout.addWidget(news_title)
+
+        self.news_feed = QTextEdit()
+        self.news_feed.setReadOnly(True)
+        news_layout.addWidget(self.news_feed)
+
+        layout.addLayout(news_layout)
+
         # 디버그 창 추가
         self.debug_dock = QDockWidget("Debug Info", self)
         self.debug_text_edit = QTextEdit()
@@ -192,7 +191,7 @@ if __name__ == '__main__':
     # 디버그용 코인 추가
     window.make_coin("BTC", "blue")  # CSS 색상 이름 사용
     window.make_coin("ETH", "#FF5733") # 16진수 색상 코드 사용
-    window.setGeometry(100, 100, 800, 600)
+    window.setGeometry(100, 100, 1000, 800)
     window.show()
 
     # 애플리케이션 실행 종료

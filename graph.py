@@ -16,7 +16,6 @@ class GraphSystem:
         self.axe.set_ylabel(ConfigLoader('config.ini').get_setting('Graph', 'ylabel'))
         self.axe.set_title(ConfigLoader('config.ini').get_setting('Graph', 'title'))
         self.max_points = int(ConfigLoader('config.ini').get_setting('Graph', 'max_points'))
-        self.initial_date_passed = False  # 초기 날짜를 지나기 전 상태를 추적
         self.annotations = []  # 가격 주석을 저장할 리스트
         
     def add_new_coin(self, name, color=None):
@@ -53,8 +52,7 @@ class GraphSystem:
 
     def next_step(self):
         for coin in self.coins:
-            if self.initial_date_passed:  # 초기 날짜를 지난 경우에만 가격을 변경
-                coin.price_change(self.DS.get_cur_date_str())
+            coin.price_change(self.DS.get_cur_date_str())
         
         self.DS.go_next_date()
         self.draw_coins()

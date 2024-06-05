@@ -1,13 +1,11 @@
 import random
-import time
 
 class Event:
     def execute(self, GS, PS, parent):
         raise NotImplementedError("Subclasses should implement this method")
 
     def show_message(self, parent, title, message):
-        display_duration = int(parent.config_loader.get_setting('Events', 'EventDisplayDuration'))
-        parent.display_event_message(title, message, display_duration)
+        parent.display_event_message(title, message, int(parent.config_loader.get_setting('Events', 'EventDisplayDuration')))
 
 class NewCoinEvent(Event):
     def execute(self, GS, PS, parent):

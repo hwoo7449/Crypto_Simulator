@@ -10,6 +10,7 @@ class Coin:
         self.delisted = False  # 상장폐지 여부를 가리키는 변수
         self.set_start_price(start_date)
         self.price_modifier = 1.0  # 이벤트에 의한 가격 변동
+        self.first_appearance = True  # 처음 나타난 경우를 표시
 
     def set_start_price(self, start_date):
         # 시작 날짜를 MainWindow의 DateSystem에서 불러옴
@@ -19,6 +20,12 @@ class Coin:
         self.prices[1].append(random.randint(start_coin_price[0], start_coin_price[1]))
 
     def price_change(self, date):
+        if self.first_appearance:
+            self.first_appearance = False  # 다음부터는 가격 변동이 일어나도록 설정
+            self.prices[0].append(date)
+            self.prices[1].append(self.prices[1][-1])
+            return
+
         if not self.delisted:  # 상장폐지가 되지 않은 경우에만 가격 변동
             coin_price_coverage = [int(price) for price in ConfigLoader('config.ini').get_setting('Init', 'CoinPriceCoverage').split('|')]
             new_price = self.prices[1][-1] + random.randint(coin_price_coverage[0], coin_price_coverage[1])
