@@ -1,21 +1,22 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QPushButton, QLabel, QLineEdit, QHBoxLayout, QComboBox, QProgressBar, QDockWidget, QTextEdit
-from PyQt5.QtCore import QTimer, QPropertyAnimation, QRect, Qt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.pyplot import rcParams
+from PyQt5.QtWidgets import QApplication, QMainWindow
 from Methods import ConfigLoader
 from graph import GraphSystem
 from player import PlayerSystem
 from event import EventSystem
+from ui_mainwindow import MainWindowUI
+from PyQt5.QtCore import QTimer
+from matplotlib.pyplot import rcParams
 
-class MainWindow(QMainWindow):
+
+class MainWindow(QMainWindow, MainWindowUI):
     def __init__(self):
         super().__init__()
         self.config_loader = ConfigLoader('config.ini')
         self.GS = GraphSystem()
         self.PS = PlayerSystem()
         self.ES = EventSystem(self.GS, self.PS, self.config_loader)
-        self.initUI()
+        self.setup_ui(self, self.GS, self.config_loader)
 
         self.day_interval = int(self.config_loader.get_setting('Simulation', 'DayInterval'))
         self.timer = QTimer(self)
@@ -25,10 +26,6 @@ class MainWindow(QMainWindow):
         self.current_progress = 0
 
         QTimer.singleShot(0, self.notify_next_step)  # UI 초기화 후 첫 번째 스텝 실행
-
-        # 애니메이션 객체를 멤버 변수로 선언
-        self.animation_down = QPropertyAnimation(self.event_label, b"geometry")
-        self.animation_up = QPropertyAnimation(self.event_label, b"geometry")
 
     def update_progress(self):
         self.current_progress += 1
@@ -80,7 +77,7 @@ class MainWindow(QMainWindow):
             self.total_cost_label.setText(f"{self.config_loader.get_setting('Labels', 'TotalCostLabel')}: {total_cost}")
 
     def display_event_message(self, title, message, duration):
-        news_item = f"{self.GS.DS.get_cur_date_str()} - {title}: {message}"
+        news_item = f"{message}"
         self.news_feed.append(news_item)
 
     def update_debug_info(self):
@@ -102,82 +99,6 @@ class MainWindow(QMainWindow):
         debug_info += f"  Day Counter: {self.ES.day_counter}\n"
         
         self.debug_text_edit.setText(debug_info)
-
-    def initUI(self):
-        self.setWindowTitle('Crypto Simulator')
-        self.setGeometry(100, 100, 1000, 800)
-
-        self.main_widget = QWidget(self)
-        self.setCentralWidget(self.main_widget)
-        layout = QVBoxLayout(self.main_widget)
-
-        self.event_label = QLabel("", self)
-        self.event_label.setFixedHeight(50)
-        self.event_label.setStyleSheet("background-color: yellow; font-size: 16px; qproperty-alignment: AlignCenter;")
-        self.event_label.setGeometry(0, -50, self.width(), 50)
-
-        canvas_layout = QHBoxLayout()
-        self.canvas = FigureCanvas(self.GS.figure)
-        canvas_layout.addWidget(self.canvas)
-
-        right_panel = QVBoxLayout()
-
-        self.portfolio_label = QLabel(f"{self.config_loader.get_setting('Labels', 'PortfolioLabel')}:\n{self.config_loader.get_setting('Labels', 'CashLabel')}: 0")
-        self.portfolio_label.setStyleSheet("background-color: white; padding: 10px;")
-        right_panel.addWidget(self.portfolio_label)
-
-        coin_control_layout = QVBoxLayout()
-        self.coin_selector = QComboBox()
-        self.coin_selector.currentIndexChanged.connect(self.update_coin_info)
-        coin_control_layout.addWidget(self.coin_selector)
-
-        self.current_price_label = QLabel(f"{self.config_loader.get_setting('Labels', 'CurrentPriceLabel')}: 0")
-        coin_control_layout.addWidget(self.current_price_label)
-
-        self.quantity_input = QLineEdit()
-        self.quantity_input.setPlaceholderText(self.config_loader.get_setting('Labels', 'QuantityPlaceholder'))
-        self.quantity_input.textChanged.connect(self.update_coin_info)
-        coin_control_layout.addWidget(self.quantity_input)
-
-        self.total_cost_label = QLabel(f"{self.config_loader.get_setting('Labels', 'TotalCostLabel')}: 0")
-        coin_control_layout.addWidget(self.total_cost_label)
-
-        self.buy_button = QPushButton(self.config_loader.get_setting('Labels', 'BuyButton'))
-        self.buy_button.clicked.connect(self.buy_coin)
-        coin_control_layout.addWidget(self.buy_button)
-
-        self.sell_button = QPushButton(self.config_loader.get_setting('Labels', 'SellButton'))
-        self.sell_button.clicked.connect(self.sell_coin)
-        coin_control_layout.addWidget(self.sell_button)
-
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setMaximum(100)
-        coin_control_layout.addWidget(self.progress_bar)
-
-        right_panel.addLayout(coin_control_layout)
-        canvas_layout.addLayout(right_panel)
-
-        layout.addLayout(canvas_layout)
-
-        # 뉴스 피드 추가
-        news_layout = QVBoxLayout()
-        news_title = QLabel("최신 뉴스")
-        news_title.setStyleSheet("font-size: 18px; font-weight: bold;")
-        news_layout.addWidget(news_title)
-
-        self.news_feed = QTextEdit()
-        self.news_feed.setReadOnly(True)
-        news_layout.addWidget(self.news_feed)
-
-        layout.addLayout(news_layout)
-
-        # 디버그 창 추가
-        self.debug_dock = QDockWidget("Debug Info", self)
-        self.debug_text_edit = QTextEdit()
-        self.debug_text_edit.setReadOnly(True)
-        self.debug_dock.setWidget(self.debug_text_edit)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.debug_dock)
-        self.update_debug_info()  # 초기 디버그 정보 업데이트
 
 if __name__ == '__main__':
     # matplotlib 폰트 설정
