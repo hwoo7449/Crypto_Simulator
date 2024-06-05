@@ -30,8 +30,6 @@ class MainWindow(QMainWindow):
         self.animation_down = QPropertyAnimation(self.event_label, b"geometry")
         self.animation_up = QPropertyAnimation(self.event_label, b"geometry")
 
-        QTimer.singleShot(0, self.notify_next_step)  # UI 초기화 후 첫 번째 스텝 실행
-
     def update_progress(self):
         self.current_progress += 1
         self.progress_bar.setValue(self.current_progress * 25)
